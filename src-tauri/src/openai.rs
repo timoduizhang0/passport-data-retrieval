@@ -52,7 +52,7 @@ pub async fn call_openai_vision(
   "doc_type": "护照",
   "passport_no": "护照号码",
   "client_type": "在职",
-  "nationality": "中国大陆",
+  "nationality": "从护照识别的国籍",
   "dob": "出生日期（YYYY-MM-DD格式）",
   "birth_place": "出生地（省市）",
   "issue_place": "签发地（省市）",
@@ -68,7 +68,7 @@ pub async fn call_openai_vision(
 - 如果某个字段在护照上看不清，请留空字符串
 - 证件类型固定为"护照"
 - 客户类型固定为"在职"
-- 国籍固定为"中国大陆"
+- 国籍根据护照上的信息如实填写，不要硬编码
 - 联系电话留空"#;
 
     let image_data_url = format!("data:image/jpeg;base64,{}", base64_image);
