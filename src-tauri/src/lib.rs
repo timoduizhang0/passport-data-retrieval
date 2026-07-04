@@ -42,11 +42,16 @@ async fn recognize_passport_base64(
 #[tauri::command]
 async fn export_excel_batch(
     data_list: Vec<PassportData>,
+    output_dir: String,
 ) -> Result<String, String> {
-    let cwd = std::env::current_dir()
-        .map_err(|e| format!("获取当前目录失败: {}", e))?;
-    let output_dir = std::path::PathBuf::from(cwd).join("护照导出");
-    let output_path = excel::generate_excel_batch(&data_list, &output_dir.to_string_lossy())
+    let dir = if output_dir.is_empty() {
+        let cwd = std::env::current_dir()
+            .map_err(|e| format!("获取当前目录失败: {}", e))?;
+        std::path::PathBuf::from(cwd).join("护照导出").to_string_lossy().to_string()
+    } else {
+        output_dir
+    };
+    let output_path = excel::generate_excel_batch(&data_list, &dir)
         .map_err(|e| format!("导出失败: {}", e))?;
     Ok(output_path)
 }

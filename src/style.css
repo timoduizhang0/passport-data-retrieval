@@ -158,6 +158,36 @@ header p {
 .thumb-item .thumb-status.done { background: var(--success); }
 .thumb-item .thumb-status.error { background: #dc2626; }
 
+/* Delete button on thumbnail */
+.thumb-del {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  opacity: 0;
+}
+.thumb-item:hover .thumb-del {
+  opacity: 1;
+}
+.thumb-del:hover {
+  background: #dc2626;
+}
+.thumb-del:disabled {
+  display: none;
+}
+
 .hidden { display: none !important; }
 
 /* Buttons */
@@ -320,6 +350,25 @@ header p {
   font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 12px;
+}
+
+/* Export directory bar */
+.export-dir-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+.export-dir-bar #export-dir-path {
+  color: var(--text-secondary);
+  font-weight: 500;
+  word-break: break-all;
 }
 
 @media (max-width: 768px) {

@@ -1,5 +1,6 @@
 import "./style.css";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 
 // --- Types ---
 interface PassportData {
@@ -24,6 +25,7 @@ let entries: PassportEntry[] = [];
 let idCounter = 0;
 let exportHistory: { name: string; time: string; path: string }[] = [];
 let isRecognizing = false;
+let exportDir = localStorage.getItem("passport-ocr:export-dir") || "";
 
 // --- DOM refs ---
 const $ = (id: string) => document.getElementById(id)!;
@@ -40,6 +42,8 @@ const progressSection = $("progress-section");
 const progressBar = $("progress-bar");
 const progressText = $("progress-text");
 const exportBtn = $("export-btn");
+const selectDirBtn = $("select-dir-btn");
+const exportDirPath = $("export-dir-path");
 const historySection = $("history-section");
 const exportHistoryDiv = $("export-history");
 
@@ -107,8 +111,10 @@ function renderThumbnails() {
 
   thumbnails.innerHTML = entries.map((e) => {
     const label = e.status === "pending" ? "待识别" : e.status === "recognizing" ? "识别中" : e.status === "done" ? "✓" : "✗";
+    const disabled = e.status === "recognizing" ? "disabled" : "";
     return `<div class="thumb-item ${e.status}" data-id="${e.id}" title="${e.error ? '错误: ' + esc(e.error) : ''}">
       <img src="${e.dataUrl}" alt="${e.name}" />
+      <button class="thumb-del" data-id="${e.id}" ${disabled} title="删除">×</button>
       <span class="thumb-status ${e.status}">${label}</span>
       <div class="thumb-name">${esc(e.name)}</div>
     </div>`;
@@ -212,6 +218,29 @@ async function startAll() {
   }
 }
 
+// --- Export Directory ---
+function renderExportDir() {
+  if (exportDir) {
+    exportDirPath.textContent = exportDir;
+    exportDirPath.style.color = "var(--text)";
+  } else {
+    exportDirPath.textContent = "默认（程序目录/护照导出/）";
+    exportDirPath.style.color = "var(--text-secondary)";
+  }
+}
+
+async function selectExportDir() {
+  const dir = await open({
+    directory: true,
+    multiple: false,
+    title: "选择导出目录",
+  });
+  if (!dir) return; // 用户取消
+  exportDir = dir;
+  localStorage.setItem("passport-ocr:export-dir", dir);
+  renderExportDir();
+}
+
 // --- Export ---
 async function doExport() {
   const done = entries.filter((e) => e.status === "done" && e.data);
@@ -224,8 +253,14 @@ async function doExport() {
   });
 
   try {
+    // 如果没有设置导出目录，先让用户选择
+    if (!exportDir) {
+      await selectExportDir();
+      if (!exportDir) return; // 用户取消选择，不导出
+    }
+
     const allData = done.map((e) => e.data!);
-    const result = await invoke<string>("export_excel_batch", { dataList: allData });
+    const result = await invoke<string>("export_excel_batch", { dataList: allData, outputDir: exportDir });
     const time = new Date().toLocaleString("zh-CN");
     const names = allData.map((d) => d.name_cn || "?").join(", ");
     exportHistory.unshift({ name: names, time, path: result });
@@ -238,6 +273,19 @@ async function doExport() {
     alert("导出失败: " + e);
     console.error(e);
   }
+}
+
+// --- Delete ---
+function deleteEntry(id: number) {
+  const idx = entries.findIndex((e) => e.id === id);
+  if (idx === -1) return;
+  const removed = entries[idx];
+  // 释放对象 URL 避免内存泄漏
+  URL.revokeObjectURL(removed.dataUrl);
+  entries.splice(idx, 1);
+  renderThumbnails();
+  renderTable();
+  updateButtons();
 }
 
 // --- Event Binding ---
@@ -253,6 +301,15 @@ uploadArea.addEventListener("click", selectFile);
 fileInput.addEventListener("change", handleFileInput);
 startAllBtn.addEventListener("click", startAll);
 exportBtn.addEventListener("click", doExport);
+selectDirBtn.addEventListener("click", selectExportDir);
+
+// 事件代理：点击缩略图上的删除按钮
+thumbnails.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest(".thumb-del") as HTMLElement | null;
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id!);
+  deleteEntry(id);
+});
 
 // Persist API config on every input change
 CONFIG_KEYS.forEach((id) => {
@@ -262,4 +319,5 @@ CONFIG_KEYS.forEach((id) => {
 
 // --- Init ---
 loadApiConfig();
+renderExportDir();
 console.log("护照识别工具已启动");
