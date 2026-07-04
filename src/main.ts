@@ -51,6 +51,21 @@ function getApiConfig() {
   };
 }
 
+// --- Persist API config ---
+const CONFIG_KEYS = ["api-key", "api-url", "model-name"];
+function loadApiConfig() {
+  for (const id of CONFIG_KEYS) {
+    const saved = localStorage.getItem("passport-ocr:" + id);
+    if (saved) ($(id) as HTMLInputElement).value = saved;
+  }
+}
+function saveApiConfig() {
+  for (const id of CONFIG_KEYS) {
+    const el = $(id) as HTMLInputElement;
+    localStorage.setItem("passport-ocr:" + id, el.value);
+  }
+}
+
 // --- File Selection ---
 function selectFile() {
   const config = getApiConfig();
@@ -92,7 +107,7 @@ function renderThumbnails() {
 
   thumbnails.innerHTML = entries.map((e) => {
     const label = e.status === "pending" ? "待识别" : e.status === "recognizing" ? "识别中" : e.status === "done" ? "✓" : "✗";
-    return `<div class="thumb-item ${e.status}" data-id="${e.id}">
+    return `<div class="thumb-item ${e.status}" data-id="${e.id}" title="${e.error ? '错误: ' + esc(e.error) : ''}">
       <img src="${e.dataUrl}" alt="${e.name}" />
       <span class="thumb-status ${e.status}">${label}</span>
       <div class="thumb-name">${esc(e.name)}</div>
@@ -189,7 +204,12 @@ async function startAll() {
 
   const done = entries.filter((e) => e.status === "done");
   const errors = entries.filter((e) => e.status === "error");
-  if (errors.length > 0) alert(`识别完成！成功 ${done.length} 张，失败 ${errors.length} 张。`);
+  if (errors.length > 0) {
+    const firstError = errors[0].error || "未知错误";
+    alert(`识别完成！成功 ${done.length} 张，失败 ${errors.length} 张。\n\n失败原因: ${firstError}`);
+  } else if (done.length > 0) {
+    alert(`识别完成！共 ${done.length} 张全部成功。`);
+  }
 }
 
 // --- Export ---
@@ -228,4 +248,12 @@ fileInput.addEventListener("change", handleFileInput);
 startAllBtn.addEventListener("click", startAll);
 exportBtn.addEventListener("click", doExport);
 
+// Persist API config on every input change
+CONFIG_KEYS.forEach((id) => {
+  $(id).addEventListener("change", saveApiConfig);
+  $(id).addEventListener("blur", saveApiConfig);
+});
+
+// --- Init ---
+loadApiConfig();
 console.log("护照识别工具已启动");
