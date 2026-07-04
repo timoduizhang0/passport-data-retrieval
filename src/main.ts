@@ -164,15 +164,20 @@ async function startAll() {
   const config = getApiConfig();
   if (!config.apiKey) { alert("请先填写 API Key"); return; }
 
-  const pending = entries.filter((e) => e.status === "pending");
-  if (pending.length === 0) return;
-
   isRecognizing = true;
   updateButtons();
   progressSection.classList.remove("hidden");
 
   let completed = 0;
-  for (const entry of pending) {
+  let total = entries.filter((e) => e.status === "pending").length;
+  updateProgress(completed, total);
+
+  // 使用 while 循环每轮重新查找 pending 条目，
+  // 这样识别过程中新上传的照片也会被自动纳入处理
+  while (true) {
+    const entry = entries.find((e) => e.status === "pending");
+    if (!entry) break;
+
     entry.status = "recognizing";
     renderThumbnails();
 
@@ -199,8 +204,9 @@ async function startAll() {
     }
 
     completed++;
-    progressBar.style.width = `${Math.round((completed / pending.length) * 100)}%`;
-    progressText.textContent = `${completed} / ${pending.length}`;
+    // 每次完成后重新统计总待识别数，以便动态更新进度
+    total = entries.filter((e) => e.status === "pending" || e.status === "recognizing").length + completed;
+    updateProgress(completed, total);
     renderThumbnails();
     renderTable();
   }
@@ -216,6 +222,12 @@ async function startAll() {
   } else if (done.length > 0) {
     alert(`识别完成！共 ${done.length} 张全部成功。`);
   }
+}
+
+function updateProgress(completed: number, total: number) {
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  progressBar.style.width = `${pct}%`;
+  progressText.textContent = `${completed} / ${total}`;
 }
 
 // --- Export Directory ---
