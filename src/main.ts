@@ -2,6 +2,9 @@ import "./style.css";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 
+// 由 vite.config.ts 在构建时注入（格式：YYYY-MM-DD）
+declare const __BUILD_DATE__: string;
+
 // --- Types ---
 interface PassportData {
   name_cn: string; gender: string; surname_en: string; given_en: string;
@@ -46,6 +49,10 @@ const selectDirBtn = $("select-dir-btn");
 const exportDirPath = $("export-dir-path");
 const historySection = $("history-section");
 const exportHistoryDiv = $("export-history");
+const settingsBtn = $("settings-btn");
+const settingsModal = $("settings-modal");
+const modalCloseBtn = $("modal-close-btn");
+const buildDateEl = $("build-date");
 
 function getApiConfig() {
   return {
@@ -323,7 +330,18 @@ thumbnails.addEventListener("click", (e) => {
   deleteEntry(id);
 });
 
-// Persist API config on every input change
+// --- Settings Modal ---
+settingsBtn.addEventListener("click", () => {
+  settingsModal.classList.remove("hidden");
+});
+
+function closeSettings() {
+  settingsModal.classList.add("hidden");
+}
+modalCloseBtn.addEventListener("click", closeSettings);
+settingsModal.addEventListener("click", (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
 CONFIG_KEYS.forEach((id) => {
   $(id).addEventListener("change", saveApiConfig);
   $(id).addEventListener("blur", saveApiConfig);
@@ -332,4 +350,6 @@ CONFIG_KEYS.forEach((id) => {
 // --- Init ---
 loadApiConfig();
 renderExportDir();
+// 显示构建日期
+buildDateEl.textContent = __BUILD_DATE__;
 console.log("护照识别工具已启动");

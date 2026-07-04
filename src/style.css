@@ -371,6 +371,87 @@ header p {
   word-break: break-all;
 }
 
+/* Settings button (fixed bottom-right) */
+.settings-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(79,70,229,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.settings-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 20px rgba(79,70,229,0.5);
+}
+
+/* Settings modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-content {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  width: 440px;
+  max-width: 90vw;
+  padding: 24px;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h2 {
+  font-size: 18px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  line-height: 1;
+  padding: 0 4px;
+}
+.modal-close:hover {
+  color: var(--text);
+}
+.modal-body .form-row {
+  margin-bottom: 14px;
+}
+.modal-version {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   #app { max-width: 100%; }
   #thumbnails { justify-content: center; }

@@ -2,8 +2,14 @@ import { defineConfig } from "vite";
 
 const host = process.env.TAURI_DEV_HOST;
 
+// 注入打包日期（格式：YYYY-MM-DD）
+const buildDate = new Date().toISOString().split("T")[0];
+
 export default defineConfig({
   clearScreen: false,
+  define: {
+    __BUILD_DATE__: JSON.stringify(buildDate),
+  },
   server: {
     port: 1420,
     strictPort: true,

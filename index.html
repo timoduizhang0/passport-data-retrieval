@@ -14,23 +14,6 @@
       </header>
 
       <main>
-        <!-- 配置区域 -->
-        <section id="config-section" class="card">
-          <h2>⚙️ API 配置</h2>
-          <div class="form-row">
-            <label for="api-key">API Key</label>
-            <input type="password" id="api-key" placeholder="sk-..." />
-          </div>
-          <div class="form-row">
-            <label for="api-url">API 地址</label>
-            <input type="text" id="api-url" value="https://token.sensenova.cn/v1" placeholder="https://api.openai.com/v1" />
-          </div>
-          <div class="form-row">
-            <label for="model-name">模型名称</label>
-            <input type="text" id="model-name" value="sensenova-6.7-flash-lite" placeholder="gpt-4o" />
-          </div>
-        </section>
-
         <!-- 上传区域 -->
         <section id="upload-section" class="card">
           <h2>📷 上传护照图片</h2>
@@ -102,6 +85,36 @@
           <div id="export-history"></div>
         </section>
       </main>
+    </div>
+
+    <!-- 设置按钮（右下角固定） -->
+    <button id="settings-btn" class="settings-btn" title="设置">⚙️</button>
+
+    <!-- 设置弹窗 -->
+    <div id="settings-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ 设置</h2>
+          <button id="modal-close-btn" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label for="api-key">API Key</label>
+            <input type="password" id="api-key" placeholder="sk-..." />
+          </div>
+          <div class="form-row">
+            <label for="api-url">API 地址</label>
+            <input type="text" id="api-url" value="https://token.sensenova.cn/v1" placeholder="https://api.openai.com/v1" />
+          </div>
+          <div class="form-row">
+            <label for="model-name">模型名称</label>
+            <input type="text" id="model-name" value="sensenova-6.7-flash-lite" placeholder="gpt-4o" />
+          </div>
+          <div class="modal-version">
+            版本：<span id="version-text">1.0.0</span>（构建于 <span id="build-date">--</span>）
+          </div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
