@@ -38,3 +38,4 @@ Thumbs.db
 
 # Editor/tool local state
 .reasonix/
+.zcode/
