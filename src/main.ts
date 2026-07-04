@@ -241,7 +241,13 @@ async function doExport() {
 }
 
 // --- Event Binding ---
-selectBtn.addEventListener("click", selectFile);
+// 注意：selectBtn 是 uploadArea 的子元素，若两者都直接监听 click，
+// 点击按钮时事件会冒泡到 uploadArea，导致 selectFile 被调用两次，
+// 从而弹出两次文件选择框。这里阻止冒泡以避免重复触发。
+selectBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  selectFile();
+});
 addMoreBtn.addEventListener("click", selectFile);
 uploadArea.addEventListener("click", selectFile);
 fileInput.addEventListener("change", handleFileInput);
