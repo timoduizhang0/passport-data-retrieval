@@ -30,13 +30,22 @@ let exportHistory: { name: string; time: string; path: string }[] = [];
 let isRecognizing = false;
 let exportDir = localStorage.getItem("passport-ocr:export-dir") || "";
 
+// --- Upload constraints ---
+const ALLOWED_MIME = new Set(["image/png", "image/jpeg"]);
+const ALLOWED_EXT = /\.(png|jpe?g)$/i;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 // --- DOM refs ---
 const $ = (id: string) => document.getElementById(id)!;
 const fileInput = $("file-input") as HTMLInputElement;
 const selectBtn = $("select-btn");
 const addMoreBtn = $("add-more-btn");
-const startAllBtn = $("start-all-btn");
+const startAllBtn = $("start-all-btn") as HTMLButtonElement;
 const uploadArea = $("upload-area");
+const uploadProgress = $("upload-progress");
+const uploadProgressBar = $("upload-progress-bar");
+const uploadProgressText = $("upload-progress-text");
+const uploadStatus = $("upload-status");
 const previewGallery = $("preview-gallery");
 const thumbnails = $("thumbnails");
 const resultSection = $("result-section");
@@ -44,7 +53,7 @@ const resultBody = $("result-body");
 const progressSection = $("progress-section");
 const progressBar = $("progress-bar");
 const progressText = $("progress-text");
-const exportBtn = $("export-btn");
+const exportBtn = $("export-btn") as HTMLButtonElement;
 const selectDirBtn = $("select-dir-btn");
 const exportDirPath = $("export-dir-path");
 const historySection = $("history-section");
@@ -89,21 +98,143 @@ function handleFileInput(e: Event) {
   if (!files || files.length === 0) return;
   const config = getApiConfig();
   if (!config.apiKey) { alert("请先填写 API Key"); return; }
-
-  for (const file of Array.from(files)) {
-    entries.push({
-      id: idCounter++,
-      file,
-      name: file.name,
-      dataUrl: URL.createObjectURL(file),
-      status: "pending",
-      data: null,
-      error: null,
-    });
-  }
-  renderThumbnails();
-  updateButtons();
+  // 点击路径：快速处理，不显示进度条
+  addFiles(files, { showProgress: false });
   fileInput.value = "";
+}
+
+// --- File Validation ---
+function validateFile(file: File): { ok: true } | { ok: false; reason: string } {
+  if (!ALLOWED_MIME.has(file.type) && !ALLOWED_EXT.test(file.name)) {
+    return { ok: false, reason: "仅支持 PNG / JPG" };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    return { ok: false, reason: `文件过大(${mb}MB > 10MB)` };
+  }
+  return { ok: true };
+}
+
+// --- File Reading with Progress ---
+function readFileAsDataUrlWithProgress(
+  file: File,
+  onProgress: (loaded: number, total: number) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (ev) => {
+      if (ev.lengthComputable) onProgress(ev.loaded, ev.total);
+    };
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`读取失败: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- Add files (used by both click & drag-drop) ---
+async function addFiles(
+  files: FileList | File[],
+  opts: { showProgress?: boolean } = {}
+) {
+  const list = Array.from(files);
+  if (list.length === 0) return;
+
+  const valid: File[] = [];
+  const errors: { name: string; reason: string }[] = [];
+  for (const f of list) {
+    const v = validateFile(f);
+    if (v.ok) valid.push(f);
+    else errors.push({ name: f.name, reason: v.reason });
+  }
+
+  if (errors.length > 0) {
+    const msg = errors
+      .slice(0, 3)
+      .map((e) => `• ${e.name}: ${e.reason}`)
+      .join("\n") + (errors.length > 3 ? `\n... 共 ${errors.length} 个文件被跳过` : "");
+    showUploadStatus("error", msg);
+  }
+
+  if (valid.length === 0) return;
+
+  const showProgress = !!opts.showProgress;
+
+  if (showProgress) {
+    uploadProgress.classList.remove("hidden");
+    uploadProgressBar.style.width = "0%";
+    uploadProgressText.textContent = `0 / ${valid.length}`;
+  }
+
+  // 总体进度：按字节数累加，更平滑
+  const totalBytes = valid.reduce((s, f) => s + f.size, 0);
+  let loadedBytes = 0;
+  let completedFiles = 0;
+
+  try {
+    for (const file of valid) {
+      let dataUrl: string;
+      if (showProgress) {
+        dataUrl = await readFileAsDataUrlWithProgress(file, (loaded, total) => {
+          const overall = loadedBytes + loaded;
+          const pct = totalBytes > 0 ? Math.round((overall / totalBytes) * 100) : 0;
+          uploadProgressBar.style.width = `${pct}%`;
+        });
+      } else {
+        dataUrl = URL.createObjectURL(file);
+      }
+      entries.push({
+        id: idCounter++,
+        file,
+        name: file.name,
+        dataUrl,
+        status: "pending",
+        data: null,
+        error: null,
+      });
+      loadedBytes += file.size;
+      completedFiles++;
+      if (showProgress) {
+        uploadProgressBar.style.width = `${Math.round((loadedBytes / totalBytes) * 100)}%`;
+        uploadProgressText.textContent = `${completedFiles} / ${valid.length}`;
+      }
+    }
+
+    if (showProgress) {
+      uploadProgressBar.style.width = "100%";
+      // 进度条短暂保留后隐藏
+      setTimeout(() => uploadProgress.classList.add("hidden"), 800);
+    }
+
+    if (errors.length === 0) {
+      showUploadStatus("success", `✓ 已添加 ${valid.length} 个文件`);
+    } else {
+      showUploadStatus(
+        "success",
+        `✓ 已添加 ${valid.length} 个文件（${errors.length} 个被跳过，详见上方错误）`
+      );
+    }
+
+    renderThumbnails();
+    updateButtons();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showUploadStatus("error", `✗ 上传失败: ${msg}`);
+    if (showProgress) uploadProgress.classList.add("hidden");
+    console.error("Upload error:", err);
+  }
+}
+
+// --- Upload status (success / error) ---
+let statusTimer: number | null = null;
+function showUploadStatus(kind: "success" | "error", message: string) {
+  uploadStatus.classList.remove("hidden", "success", "error");
+  uploadStatus.classList.add(kind);
+  uploadStatus.textContent = message;
+  if (statusTimer !== null) window.clearTimeout(statusTimer);
+  statusTimer = window.setTimeout(() => {
+    uploadStatus.classList.add("hidden");
+    statusTimer = null;
+  }, 4000);
 }
 
 // --- Render ---
@@ -321,6 +452,70 @@ fileInput.addEventListener("change", handleFileInput);
 startAllBtn.addEventListener("click", startAll);
 exportBtn.addEventListener("click", doExport);
 selectDirBtn.addEventListener("click", selectExportDir);
+
+// --- Drag & Drop Upload ---
+// 拖拽计数器：dragleave 在子元素上会反复触发，
+// 用计数器保证只有真正离开整个区域时才取消高亮。
+let dragDepth = 0;
+
+function setDragOver(active: boolean, accept = true) {
+  uploadArea.classList.remove("drag-over", "drag-error");
+  if (active) uploadArea.classList.add(accept ? "drag-over" : "drag-error");
+}
+
+function containsFiles(dt: DataTransfer | null): boolean {
+  if (!dt) return false;
+  const types = Array.from(dt.types || []);
+  if (types.includes("Files")) return true;
+  // 某些 WebView2 实现不会暴露 "Files"，直接看 items
+  return Array.from(dt.items || []).some((it) => it.kind === "file");
+}
+
+uploadArea.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  dragDepth++;
+  setDragOver(true, containsFiles(e.dataTransfer));
+});
+
+uploadArea.addEventListener("dragover", (e) => {
+  // 必须阻止默认行为，否则浏览器/WebView 会拒绝 drop
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+});
+
+uploadArea.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) setDragOver(false, true);
+});
+
+uploadArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dragDepth = 0;
+  setDragOver(false, true);
+  const config = getApiConfig();
+  if (!config.apiKey) { alert("请先填写 API Key"); return; }
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  addFiles(files, { showProgress: true });
+});
+
+// 防止拖出区域外的文件触发浏览器/WebView 默认行为
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => {
+  // 只有落在 uploadArea 外部时才阻止默认打开，
+  // 落在内部时 uploadArea 的 drop 监听器已经 e.preventDefault()
+  if (!uploadArea.contains(e.target as Node)) e.preventDefault();
+});
+
+// Esc 键取消拖拽高亮（仅当正处于拖拽中）
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && (uploadArea.classList.contains("drag-over") || uploadArea.classList.contains("drag-error"))) {
+    dragDepth = 0;
+    setDragOver(false, true);
+  }
+});
 
 // 事件代理：点击缩略图上的删除按钮
 thumbnails.addEventListener("click", (e) => {

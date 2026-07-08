@@ -97,6 +97,7 @@ header p {
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
 }
 
 .upload-area:hover {
@@ -106,6 +107,87 @@ header p {
 
 .upload-area p { font-size: 16px; margin-bottom: 8px; }
 .upload-area .hint { font-size: 13px; color: var(--text-secondary); }
+
+.upload-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+.upload-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+/* 拖拽悬停高亮 */
+.upload-area.drag-over {
+  border-color: var(--primary);
+  border-style: solid;
+  background: #eef2ff;
+  transform: scale(1.01);
+}
+.upload-area.drag-over .upload-title {
+  color: var(--primary);
+  font-weight: 600;
+}
+.upload-area.drag-over .upload-icon {
+  transform: scale(1.15);
+  transition: transform 0.2s;
+}
+
+/* 拖拽错误状态(拖入了非图片等) */
+.upload-area.drag-error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* 上传进度条(用于拖拽多文件时的实时进度) */
+.upload-progress {
+  margin-top: 16px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#upload-progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+#upload-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+#upload-progress-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 上传状态消息(成功/失败) */
+.upload-status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+  word-break: break-all;
+}
+.upload-status.success {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.upload-status.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
 
 /* Thumbnail Gallery */
 #thumbnails {

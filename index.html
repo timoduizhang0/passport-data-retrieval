@@ -18,10 +18,18 @@
         <section id="upload-section" class="card">
           <h2>📷 上传护照图片</h2>
           <div class="upload-area" id="upload-area">
-            <p>点击选择多张护照图片</p>
+            <div class="upload-icon">📁</div>
+            <p class="upload-title">点击或拖拽护照图片到此处</p>
             <p class="hint">支持 JPG / PNG 格式，可一次选择多张</p>
             <input type="file" id="file-input" accept="image/png,image/jpeg" multiple hidden />
             <button id="select-btn" class="btn-primary">选择图片</button>
+            <div id="upload-progress" class="upload-progress hidden">
+              <div id="upload-progress-bar-container">
+                <div id="upload-progress-bar"></div>
+              </div>
+              <p id="upload-progress-text">0 / 0</p>
+            </div>
+            <div id="upload-status" class="upload-status hidden"></div>
           </div>
           <div id="preview-gallery" class="hidden">
             <div id="thumbnails"></div>
