@@ -23,6 +23,16 @@ interface PassportEntry {
   error: string | null;
 }
 
+// 授权状态信息（由 Rust 后端 get_license_info 命令返回）
+interface LicenseInfo {
+  valid: boolean;
+  issued_at: string;
+  expire_at: string;
+  remaining_days: number;
+  status: string;
+  message: string;
+}
+
 // --- State ---
 let entries: PassportEntry[] = [];
 let idCounter = 0;
@@ -67,6 +77,12 @@ const bgSelectBtn = $("bg-select-btn");
 const bgClearBtn = $("bg-clear-btn");
 const bgPreview = $("bg-preview") as HTMLImageElement;
 const app = $("app");
+// 授权相关 DOM
+const licenseBlocker = $("license-blocker");
+const licenseBlockerTitle = $("license-blocker-title");
+const licenseBlockerMessage = $("license-blocker-message");
+const licenseStatus = $("license-status");
+const licenseDetail = $("license-detail");
 
 function getApiConfig() {
   return {
@@ -651,3 +667,67 @@ if (savedBg) applyBackground(savedBg);
 // 显示构建日期
 buildDateEl.textContent = __BUILD_DATE__;
 console.log("护照识别工具已启动");
+
+// --- License Check ---
+// 启动时调用后端获取授权状态，过期/无效则显示遮罩阻止操作，
+// 并在设置弹窗中显示授权到期信息。
+async function checkLicense() {
+  try {
+    const info = await invoke<LicenseInfo>("get_license_info");
+    renderLicenseInfo(info);
+    if (!info.valid) {
+      showLicenseBlocker(info);
+    }
+  } catch (err) {
+    console.error("获取授权信息失败:", err);
+    // 获取失败时按失效处理，避免授权模块异常时绕过校验
+    licenseStatus.textContent = "校验失败";
+    licenseStatus.className = "license-status-invalid";
+    licenseDetail.textContent = String(err);
+    showLicenseBlocker({
+      valid: false,
+      message: "授权校验失败，请检查程序完整性",
+    } as LicenseInfo);
+  }
+}
+
+// 在设置弹窗中渲染授权状态
+function renderLicenseInfo(info: LicenseInfo) {
+  let statusText = "";
+  let statusClass = "";
+  if (info.status === "ok") {
+    if (info.remaining_days <= 7) {
+      statusText = `即将到期（剩余 ${info.remaining_days} 天）`;
+      statusClass = "license-status-warn";
+    } else {
+      statusText = `有效（剩余 ${info.remaining_days} 天）`;
+      statusClass = "license-status-ok";
+    }
+  } else if (info.status === "expired") {
+    statusText = "已过期";
+    statusClass = "license-status-expired";
+  } else {
+    statusText = "无效";
+    statusClass = "license-status-invalid";
+  }
+  licenseStatus.textContent = statusText;
+  licenseStatus.className = statusClass;
+  licenseDetail.textContent = info.message || `签发：${info.issued_at || "--"} | 到期：${info.expire_at || "--"}`;
+}
+
+// 显示授权过期遮罩层，阻止用户操作
+function showLicenseBlocker(info: LicenseInfo) {
+  if (info.status === "expired") {
+    licenseBlockerTitle.textContent = "🔒 授权已过期";
+    licenseBlockerMessage.textContent = info.message || "授权已过期，请联系开发者续期";
+  } else if (info.status === "damaged" || info.status === "invalid") {
+    licenseBlockerTitle.textContent = "🔒 授权无效";
+    licenseBlockerMessage.textContent = info.message || "授权码无效，程序可能已损坏";
+  } else {
+    licenseBlockerTitle.textContent = "🔒 授权不可用";
+    licenseBlockerMessage.textContent = info.message || "授权不可用，请联系开发者";
+  }
+  licenseBlocker.classList.remove("hidden");
+}
+
+checkLicense();

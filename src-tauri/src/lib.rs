@@ -1,6 +1,8 @@
 mod excel;
+mod license;
 mod openai;
 
+use license::LicenseInfo;
 use openai::PassportData;
 use std::sync::Mutex;
 use tauri::State;
@@ -56,8 +58,22 @@ async fn export_excel_batch(
     Ok(output_path)
 }
 
+/// 获取内置授权码的校验结果，供前端启动时调用
+#[tauri::command]
+fn get_license_info() -> LicenseInfo {
+    license::get_license_info()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 启动时校验授权并打印日志
+    let info = license::get_license_info();
+    if info.valid {
+        println!("[授权] 有效，到期日 {}，剩余 {} 天", info.expire_at, info.remaining_days);
+    } else {
+        println!("[授权] 无效：{}", info.message);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
@@ -67,6 +83,7 @@ pub fn run() {
             recognize_passport,
             recognize_passport_base64,
             export_excel_batch,
+            get_license_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

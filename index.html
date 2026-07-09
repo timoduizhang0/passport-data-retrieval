@@ -131,7 +131,21 @@
           <div class="modal-version">
             版本：<span id="version-text">1.0.0</span>（构建于 <span id="build-date">--</span>）
           </div>
+          <div class="modal-license" id="license-info">
+            授权状态：<span id="license-status">--</span><br />
+            <span id="license-detail" class="license-detail"></span>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 授权过期遮罩层 -->
+    <div id="license-blocker" class="license-blocker hidden">
+      <div class="license-blocker-box">
+        <div class="license-blocker-icon">🔒</div>
+        <h2 id="license-blocker-title">授权已失效</h2>
+        <p id="license-blocker-message">请联系开发者续期</p>
+        <p class="license-blocker-hint">提示：修改系统时间无法绕过授权校验</p>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

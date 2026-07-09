@@ -605,3 +605,68 @@ header p {
   margin: -4px 0 12px 92px;
 }
 #app.has-bg .form-hint { color: var(--text-secondary); }
+
+/* --- 设置弹窗：授权信息 --- */
+.modal-license {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.modal-license .license-detail {
+  color: var(--text);
+  font-size: 12px;
+}
+.modal-license .license-status-ok { color: var(--success); font-weight: 500; }
+.modal-license .license-status-warn { color: #d97706; font-weight: 500; }
+.modal-license .license-status-expired { color: #dc2626; font-weight: 500; }
+.modal-license .license-status-invalid { color: #dc2626; font-weight: 500; }
+
+/* --- 授权过期遮罩层 --- */
+.license-blocker {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.license-blocker-box {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.35);
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 420px;
+  width: 90vw;
+}
+.license-blocker-icon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.license-blocker-box h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.license-blocker-box p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.license-blocker-hint {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+}

@@ -1,0 +1,6 @@
+{
+  "_comment": "授权码配置文件：编译时由 build.rs 读取并生成内置授权码注入到二进制中",
+  "validityValue": 1,
+  "validityUnit": "years",
+  "secret": "passport-ocr-license-secret-2026-please-change-me"
+}

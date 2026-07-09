@@ -4,21 +4,23 @@ AI 驱动的桌面端护照信息识别工具，上传护照图片、自动 OCR 
 
 ## 技术栈
 
-- **前端**: Vite + TypeScript (Vanilla)
-- **桌面框架**: Tauri 2.x
-- **后端**: Rust (reqwest + serde + rust_xlsxwriter)
-- **AI API**: OpenAI Vision API（兼容任意 OpenAI 标准接口的服务）
-- **插件**: tauri-plugin-dialog（系统对话框）
+- **前端**：Vite + TypeScript (Vanilla)
+- **桌面框架**：Tauri 2.x
+- **后端**：Rust (reqwest + serde + rust_xlsxwriter + hmac/sha2)
+- **AI API**：OpenAI Vision API（兼容任意 OpenAI 标准接口的服务）
+- **插件**：tauri-plugin-dialog（系统对话框）
 
 ## 功能特性
 
-- 📷 上传护照图片（支持 JPG/PNG，可多选）
+- 📷 上传护照图片（支持 JPG/PNG，可多选/拖拽）
 - 🗑️ 管理图片（hover 删除已上传的照片）
 - 🤖 调用 OpenAI Vision API 自动识别护照字段（识别中可继续添加，自动纳入处理）
 - 📋 展示识别结果（15 个字段）
 - ✏️ 手动校正（联系电话可编辑）
 - 📥 批量导出 Excel（标准模板格式，支持自定义导出目录）
 - 📂 导出记录追踪
+- 🖼️ 自定义背景图（设置弹窗中可上传/清除）
+- 🔒 内置授权码校验（编译时注入，到期自动拦截）
 
 ## 快速开始
 
@@ -42,32 +44,36 @@ npm run tauri dev
 npm run tauri build
 ```
 
-构建产物位于 `src-tauri/target/release/passport-ocr.exe`
+构建产物位于 `src-tauri/target/release/passport-ocr.exe`，安装包位于 `src-tauri/target/release/bundle/` 下。
 
 ## 项目结构
 
 ```
 passport-ocr/
-├── index.html                 # 主页面（含设置弹窗）
-├── package.json               # 前端依赖
-├── vite.config.ts             # Vite 配置（注入构建日期）
-├── tsconfig.json              # TypeScript 配置
-├── 启动护照工具.bat           # Windows 快捷启动
-├── 构建.bat                   # Windows 快捷构建
+├── index.html                  # 主页面（含设置弹窗、授权遮罩）
+├── package.json                # 前端依赖
+├── vite.config.ts              # Vite 配置（注入构建日期）
+├── tsconfig.json               # TypeScript 配置
+├── license.config.json         # 授权码配置（有效期/单位/签名密钥）
+├── 启动护照工具.bat             # Windows 快捷启动
+├── 构建.bat                     # Windows 快捷构建
 ├── src/
-│   ├── main.ts                # 前端逻辑
-│   └── style.css              # 样式
+│   ├── main.ts                 # 前端逻辑（含授权校验入口）
+│   └── style.css               # 样式（含授权遮罩样式）
 ├── src-tauri/
-│   ├── Cargo.toml             # Rust 依赖
-│   ├── tauri.conf.json        # Tauri 配置
+│   ├── Cargo.toml              # Rust 依赖
+│   ├── tauri.conf.json         # Tauri 配置
+│   ├── build.rs                # 编译时生成授权码并注入环境变量
 │   ├── capabilities/
-│   │   └── default.json       # 权限配置
-│   ├── icons/                 # 应用图标
+│   │   └── default.json        # 权限配置
+│   ├── icons/                  # 应用图标
 │   └── src/
-│       ├── main.rs            # 入口
-│       ├── lib.rs             # Tauri 命令注册
-│       ├── openai.rs          # OpenAI API 客户端
-│       └── excel.rs           # Excel 生成
+│       ├── main.rs             # 入口
+│       ├── lib.rs              # Tauri 命令注册（含 get_license_info）
+│       ├── openai.rs           # OpenAI API 客户端
+│       ├── excel.rs            # Excel 生成
+│       └── license.rs          # 授权码解析与校验
+└── ARCHITECTURE.md             # 详细架构文档
 ```
 
 ## 配置说明
@@ -81,6 +87,16 @@ passport-ocr/
 | 模型名称 | 模型名称 | `sensenova-6.7-flash-lite` |
 
 支持任意 OpenAI 兼容接口（如 `https://api.openai.com/v1`、Azure OpenAI 等）。
+
+### 授权码配置（`license.config.json`，项目根目录）
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| `validityValue` | 有效期数值（支持小数） | `3` / `0.5` |
+| `validityUnit` | 有效期单位 | `"months"` / `"years"` |
+| `secret` | HMAC 签名密钥（至少 8 字符） | 建议替换为自定义值 |
+
+授权码在 `build.rs` 编译时基于当天日期生成，HMAC-SHA256 签名后硬编码到二进制中。运行时不联网校验，到期或签名不匹配时显示授权遮罩层阻止使用。详见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ### 版本信息
 
