@@ -62,6 +62,11 @@ const settingsBtn = $("settings-btn");
 const settingsModal = $("settings-modal");
 const modalCloseBtn = $("modal-close-btn");
 const buildDateEl = $("build-date");
+const bgInput = $("bg-input") as HTMLInputElement;
+const bgSelectBtn = $("bg-select-btn");
+const bgClearBtn = $("bg-clear-btn");
+const bgPreview = $("bg-preview") as HTMLImageElement;
+const app = $("app");
 
 function getApiConfig() {
   return {
@@ -83,6 +88,93 @@ function saveApiConfig() {
   for (const id of CONFIG_KEYS) {
     const el = $(id) as HTMLInputElement;
     localStorage.setItem("passport-ocr:" + id, el.value);
+  }
+}
+
+// --- Custom Background ---
+const BG_KEY = "passport-ocr:background";
+const BG_MAX_LONG_EDGE = 1920;
+const BG_MAX_DATAURL_SIZE = 2 * 1024 * 1024; // 2MB
+
+function ensureBgLayer(): HTMLDivElement {
+  let layer = document.getElementById("bg-layer") as HTMLDivElement | null;
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "bg-layer";
+    document.body.prepend(layer);
+  }
+  return layer;
+}
+
+function applyBackground(dataUrl: string) {
+  if (!dataUrl) return;
+  const layer = ensureBgLayer();
+  layer.style.backgroundImage = `url("${dataUrl}")`;
+  app.classList.add("has-bg");
+  bgPreview.src = dataUrl;
+  bgPreview.classList.remove("hidden");
+}
+
+function clearBackground() {
+  const layer = document.getElementById("bg-layer");
+  if (layer) layer.style.backgroundImage = "";
+  app.classList.remove("has-bg");
+  bgPreview.removeAttribute("src");
+  bgPreview.classList.add("hidden");
+  localStorage.removeItem(BG_KEY);
+}
+
+async function compressImage(file: File, maxLongEdge: number): Promise<string> {
+  const isPng = file.type === "image/png" || /\.png$/i.test(file.name);
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`读取失败: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error(`图片解码失败: ${file.name}`));
+    el.src = dataUrl;
+  });
+  let { naturalWidth: w, naturalHeight: h } = img;
+  if (Math.max(w, h) > maxLongEdge) {
+    if (w >= h) {
+      h = Math.round((h * maxLongEdge) / w);
+      w = maxLongEdge;
+    } else {
+      w = Math.round((w * maxLongEdge) / h);
+      h = maxLongEdge;
+    }
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, w, h);
+  if (isPng) {
+    try { return canvas.toDataURL("image/png"); } catch { return dataUrl; }
+  }
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+async function handleBgSelect(file: File) {
+  if (!/^image\/(png|jpe?g)$/i.test(file.type) && !/\.(png|jpe?g)$/i.test(file.name)) {
+    alert("仅支持 JPG / PNG 格式");
+    return;
+  }
+  try {
+    const dataUrl = await compressImage(file, BG_MAX_LONG_EDGE);
+    if (dataUrl.length > BG_MAX_DATAURL_SIZE) {
+      alert(`图片处理后仍大于 2MB,请换更小的图 (当前 ${(dataUrl.length / 1024 / 1024).toFixed(2)}MB)`);
+      return;
+    }
+    localStorage.setItem(BG_KEY, dataUrl);
+    applyBackground(dataUrl);
+  } catch (err) {
+    alert(`背景设置失败: ${(err as Error).message}`);
   }
 }
 
@@ -542,9 +634,20 @@ CONFIG_KEYS.forEach((id) => {
   $(id).addEventListener("blur", saveApiConfig);
 });
 
+// --- Background events ---
+bgSelectBtn.addEventListener("click", () => bgInput.click());
+bgClearBtn.addEventListener("click", clearBackground);
+bgInput.addEventListener("change", (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) handleBgSelect(file);
+  bgInput.value = "";
+});
+
 // --- Init ---
 loadApiConfig();
 renderExportDir();
+const savedBg = localStorage.getItem(BG_KEY);
+if (savedBg) applyBackground(savedBg);
 // 显示构建日期
 buildDateEl.textContent = __BUILD_DATE__;
 console.log("护照识别工具已启动");

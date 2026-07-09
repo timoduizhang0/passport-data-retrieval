@@ -14,6 +14,16 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* 自定义背景层：有背景图时固定铺满视口,在所有内容下方 */
+#bg-layer {
+  position: fixed;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  z-index: -1;
+  pointer-events: none;
+}
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
   background: var(--bg);
@@ -540,3 +550,58 @@ header p {
   .form-row { flex-direction: column; align-items: stretch; }
   .form-row label { min-width: auto; }
 }
+
+/* --- 自定义背景：仅在 #app.has-bg 时启用,不改变无背景时的样式 --- */
+#app.has-bg > * { position: relative; z-index: 1; }
+
+#app.has-bg header {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+#app.has-bg .card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+#app.has-bg .card h2 {
+  background: transparent;
+  border-bottom-color: rgba(226, 232, 240, 0.7);
+}
+#app.has-bg #table-wrapper { background: transparent; }
+#app.has-bg #result-table th {
+  background: rgba(241, 245, 249, 0.85);
+}
+#app.has-bg #result-table tbody tr {
+  background: rgba(255, 255, 255, 0.78);
+}
+#app.has-bg #result-table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.18);
+}
+#app.has-bg .settings-btn {
+  background: rgba(79, 70, 229, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 设置弹窗内的背景控件 */
+.bg-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+.bg-preview {
+  width: 80px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.form-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: -4px 0 12px 92px;
+}
+#app.has-bg .form-hint { color: var(--text-secondary); }

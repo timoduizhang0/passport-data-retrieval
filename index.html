@@ -118,6 +118,16 @@
             <label for="model-name">模型名称</label>
             <input type="text" id="model-name" value="sensenova-6.7-flash-lite" placeholder="gpt-4o" />
           </div>
+          <div class="form-row">
+            <label>背景图片</label>
+            <div class="bg-controls">
+              <input type="file" id="bg-input" accept="image/jpeg,image/png" hidden />
+              <button id="bg-select-btn" type="button" class="btn-secondary" style="padding:6px 12px;font-size:13px">🖼️ 选择图片</button>
+              <button id="bg-clear-btn" type="button" class="btn-secondary" style="padding:6px 12px;font-size:13px">🗑️ 清除背景</button>
+              <img id="bg-preview" class="bg-preview hidden" alt="背景预览" />
+            </div>
+          </div>
+          <p class="form-hint">支持 JPG / PNG,iPhone 共享后请选 JPEG</p>
           <div class="modal-version">
             版本：<span id="version-text">1.0.0</span>（构建于 <span id="build-date">--</span>）
           </div>
