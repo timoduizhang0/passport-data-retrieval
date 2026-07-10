@@ -130,7 +130,7 @@ passport-data-retrieval/
   "version": "1.2.0",
   "releaseDate": "2026-07-15",
   "changelog": "• 修复 OCR 识别异常\n• 优化导出速度",
-  "downloadUrl": "https://github.com/timoduizhang0/passport-data-retrieval/releases/download/v1.2.0/passport-ocr-setup.exe",
+  "downloadUrl": "https://github.com/timoduizhang0/passport-data-retrieval/releases/download/v1.2.0/passport-ocr_1.0.0_x64_en-US.msi",
   "mandatory": false
 }
 ```
