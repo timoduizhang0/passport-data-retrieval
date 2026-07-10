@@ -87,6 +87,9 @@
           </div>
         </section>
 
+        <!-- 背景图底图块(独立于结果卡,在其下方;无背景时 hidden) -->
+        <div id="result-bg-strip" class="result-bg-strip hidden" style="--bg-cols:1"></div>
+
         <!-- 已导出记录列表 -->
         <section id="history-section" class="card hidden">
           <h2>📂 导出记录</h2>
@@ -121,13 +124,13 @@
           <div class="form-row">
             <label>背景图片</label>
             <div class="bg-controls">
-              <input type="file" id="bg-input" accept="image/jpeg,image/png" hidden />
+              <input type="file" id="bg-input" accept="image/jpeg,image/png" multiple hidden />
               <button id="bg-select-btn" type="button" class="btn-secondary" style="padding:6px 12px;font-size:13px">🖼️ 选择图片</button>
               <button id="bg-clear-btn" type="button" class="btn-secondary" style="padding:6px 12px;font-size:13px">🗑️ 清除背景</button>
               <img id="bg-preview" class="bg-preview hidden" alt="背景预览" />
             </div>
           </div>
-          <p class="form-hint">支持 JPG / PNG,iPhone 共享后请选 JPEG</p>
+          <p class="form-hint">支持 JPG / PNG,最多 3 张。iPhone 共享后请选 JPEG</p>
           <div class="modal-version">
             版本：<span id="version-text">1.0.0</span>（构建于 <span id="build-date">--</span>）
           </div>

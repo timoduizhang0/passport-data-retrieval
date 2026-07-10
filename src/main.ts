@@ -109,35 +109,60 @@ function saveApiConfig() {
 
 // --- Custom Background ---
 const BG_KEY = "passport-ocr:background";
+const BG_MAX_COUNT = 3;
 const BG_MAX_LONG_EDGE = 1920;
 const BG_MAX_DATAURL_SIZE = 2 * 1024 * 1024; // 2MB
+const resultBgStrip = $("result-bg-strip") as HTMLDivElement;
 
-function ensureBgLayer(): HTMLDivElement {
-  let layer = document.getElementById("bg-layer") as HTMLDivElement | null;
-  if (!layer) {
-    layer = document.createElement("div");
-    layer.id = "bg-layer";
-    document.body.prepend(layer);
+function applyBackground(dataUrls: string[]) {
+  if (!resultBgStrip) return;
+  resultBgStrip.innerHTML = "";
+  if (dataUrls.length === 0) {
+    resultBgStrip.classList.add("hidden");
+    app.classList.remove("has-bg");
+    return;
   }
-  return layer;
-}
-
-function applyBackground(dataUrl: string) {
-  if (!dataUrl) return;
-  const layer = ensureBgLayer();
-  layer.style.backgroundImage = `url("${dataUrl}")`;
+  resultBgStrip.style.setProperty("--bg-cols", String(Math.min(dataUrls.length, BG_MAX_COUNT)));
+  for (const url of dataUrls.slice(0, BG_MAX_COUNT)) {
+    const cell = document.createElement("div");
+    cell.className = "result-bg-stlip-cell";
+    cell.style.backgroundImage = `url("${url}")`;
+    resultBgStrip.appendChild(cell);
+  }
+  resultBgStrip.classList.remove("hidden");
   app.classList.add("has-bg");
-  bgPreview.src = dataUrl;
-  bgPreview.classList.remove("hidden");
+  if (bgPreview) {
+    bgPreview.src = dataUrls[0];
+    bgPreview.classList.remove("hidden");
+  }
 }
 
 function clearBackground() {
-  const layer = document.getElementById("bg-layer");
-  if (layer) layer.style.backgroundImage = "";
+  if (!resultBgStrip) return;
+  resultBgStrip.innerHTML = "";
+  resultBgStrip.style.backgroundImage = "";
+  resultBgStrip.classList.add("hidden");
   app.classList.remove("has-bg");
-  bgPreview.removeAttribute("src");
-  bgPreview.classList.add("hidden");
+  if (bgPreview) {
+    bgPreview.removeAttribute("src");
+    bgPreview.classList.add("hidden");
+  }
   localStorage.removeItem(BG_KEY);
+}
+
+function loadBackgrounds(): string[] {
+  try {
+    const raw = localStorage.getItem(BG_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) return arr.filter((x) => typeof x === "string").slice(0, BG_MAX_COUNT);
+    if (typeof arr === "string" && arr) return [arr];
+  } catch { /* fall through */ }
+  return [];
+}
+
+function saveBackgrounds(urls: string[]) {
+  localStorage.setItem(BG_KEY, JSON.stringify(urls));
 }
 
 async function compressImage(file: File, maxLongEdge: number): Promise<string> {
@@ -176,19 +201,30 @@ async function compressImage(file: File, maxLongEdge: number): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-async function handleBgSelect(file: File) {
-  if (!/^image\/(png|jpe?g)$/i.test(file.type) && !/\.(png|jpe?g)$/i.test(file.name)) {
+async function handleBgSelect(files: FileList | File[]) {
+  const list = Array.from(files).filter((f) =>
+    /^image\/(png|jpe?g)$/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name)
+  );
+  if (list.length === 0) {
     alert("仅支持 JPG / PNG 格式");
     return;
   }
+  if (list.length > BG_MAX_COUNT) {
+    alert(`一次最多选择 ${BG_MAX_COUNT} 张背景图,已截取前 ${BG_MAX_COUNT} 张`);
+  }
+  const selected = list.slice(0, BG_MAX_COUNT);
   try {
-    const dataUrl = await compressImage(file, BG_MAX_LONG_EDGE);
-    if (dataUrl.length > BG_MAX_DATAURL_SIZE) {
-      alert(`图片处理后仍大于 2MB,请换更小的图 (当前 ${(dataUrl.length / 1024 / 1024).toFixed(2)}MB)`);
-      return;
+    const newUrls: string[] = [];
+    for (const file of selected) {
+      const dataUrl = await compressImage(file, BG_MAX_LONG_EDGE);
+      if (dataUrl.length > BG_MAX_DATAURL_SIZE) {
+        alert(`${file.name} 处理后仍大于 2MB,请换更小的图 (当前 ${(dataUrl.length / 1024 / 1024).toFixed(2)}MB)`);
+        return;
+      }
+      newUrls.push(dataUrl);
     }
-    localStorage.setItem(BG_KEY, dataUrl);
-    applyBackground(dataUrl);
+    saveBackgrounds(newUrls);
+    applyBackground(newUrls);
   } catch (err) {
     alert(`背景设置失败: ${(err as Error).message}`);
   }
@@ -654,16 +690,16 @@ CONFIG_KEYS.forEach((id) => {
 bgSelectBtn.addEventListener("click", () => bgInput.click());
 bgClearBtn.addEventListener("click", clearBackground);
 bgInput.addEventListener("change", (e) => {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (file) handleBgSelect(file);
+  const files = (e.target as HTMLInputElement).files;
+  if (files && files.length > 0) handleBgSelect(files);
   bgInput.value = "";
 });
 
 // --- Init ---
 loadApiConfig();
 renderExportDir();
-const savedBg = localStorage.getItem(BG_KEY);
-if (savedBg) applyBackground(savedBg);
+const savedBg = loadBackgrounds();
+if (savedBg.length > 0) applyBackground(savedBg);
 // 显示构建日期
 buildDateEl.textContent = __BUILD_DATE__;
 console.log("护照识别工具已启动");
