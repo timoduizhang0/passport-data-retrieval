@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "releaseDate": "2026-07-10",
   "changelog": "• 初始版本",
-  "downloadUrl": "https://github.com/timoduizhang0/passport-data-retrieval/releases/download/v1.0.0/passport-ocr_1.0.0_x64_en-US.msi",
+  "downloadUrl": "https://github.com/timoduizhang0/passport-data-retrieval/releases/download/v1.0.1/passport-ocr_1.0.1_x64_en-US.msi",
   "mandatory": false
 }
