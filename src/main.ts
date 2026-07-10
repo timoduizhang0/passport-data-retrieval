@@ -1,9 +1,11 @@
 import "./style.css";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { initAutoUpdate } from "./updater";
 
-// 由 vite.config.ts 在构建时注入（格式：YYYY-MM-DD）
+// 由 vite.config.ts 在构建时注入
 declare const __BUILD_DATE__: string;
+declare const __APP_VERSION__: string;
 
 // --- Types ---
 interface PassportData {
@@ -700,8 +702,12 @@ loadApiConfig();
 renderExportDir();
 const savedBg = loadBackgrounds();
 if (savedBg.length > 0) applyBackground(savedBg);
-// 显示构建日期
+// 显示构建日期和版本号
 buildDateEl.textContent = __BUILD_DATE__;
+const versionTextEl = document.getElementById("version-text");
+if (versionTextEl) versionTextEl.textContent = __APP_VERSION__;
+// 启动自动更新检查（5 秒后静默检查）
+initAutoUpdate(__APP_VERSION__);
 console.log("护照识别工具已启动");
 
 // --- License Check ---

@@ -1,14 +1,18 @@
 import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
 
 const host = process.env.TAURI_DEV_HOST;
 
 // 注入打包日期（格式：YYYY-MM-DD）
 const buildDate = new Date().toISOString().split("T")[0];
+// 从 package.json 读取版本号
+const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 export default defineConfig({
   clearScreen: false,
   define: {
     __BUILD_DATE__: JSON.stringify(buildDate),
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
     port: 1420,
