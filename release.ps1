@@ -51,10 +51,9 @@ if ($Version -notmatch '^\d+\.\d+\.\d+$') {
 }
 Write-Ok "目标版本号: $Version"
 
-# GITHUB_TOKEN：脚本内嵌默认值（仅本机使用）
+# GITHUB_TOKEN：仅从环境变量读取，不硬编码在脚本里（避免泄露到 git 历史触发 push protection）
 if ([string]::IsNullOrEmpty($env:GITHUB_TOKEN)) {
-    $env:GITHUB_TOKEN = "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"
-    Write-Warn "环境变量 GITHUB_TOKEN 未设置，使用脚本内嵌默认值"
+    Write-Err "环境变量 GITHUB_TOKEN 未设置。运行： [System.Environment]::SetEnvironmentVariable(`"GITHUB_TOKEN`", `"ghp_xxx`", `"User`") 后重启 PowerShell"
 }
 Write-Ok "GITHUB_TOKEN 已就绪（长度: $($env:GITHUB_TOKEN.Length)）"
 
@@ -292,6 +291,15 @@ if ($LASTEXITCODE -ne 0) {
     Write-Err "git push github master:main 失败"
 }
 Write-Ok "推送成功"
+
+# === 步骤 10.5：同步推送到 Gitee 源码主仓 ===
+Write-Step "步骤 10.5/12：同步推送到 Gitee 源码主仓"
+git push origin master
+if ($LASTEXITCODE -ne 0) {
+    Write-Warn "推送到 Gitee 失败，不影响发版（可手动重试：git push origin master）"
+} else {
+    Write-Ok "Gitee 同步成功"
+}
 
 # === 步骤 11：验证 jsDelivr 缓存 ===
 Write-Step "步骤 11/12：等待 jsDelivr CDN 同步"
