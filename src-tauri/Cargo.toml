@@ -1,6 +1,6 @@
 [package]
 name = "passport-ocr"
-version = "1.0.4"
+version = "1.0.5"
 description = "护照信息识别工具"
 authors = [""]
 edition = "2021"
