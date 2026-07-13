@@ -1,7 +1,7 @@
 import "./style.css";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { initAutoUpdate } from "./updater";
+import { initAutoUpdate, showUpdateDialog, type UpdateInfo } from "./updater";
 
 // 由 vite.config.ts 在构建时注入
 declare const __BUILD_DATE__: string;
@@ -697,6 +697,24 @@ bgInput.addEventListener("change", (e) => {
   bgInput.value = "";
 });
 
+// --- 更新按钮 ---
+// 当发现新版本时，在 header 区域添加一个持久"更新"按钮
+function addUpdateButton(_info: UpdateInfo) {
+  const existing = document.getElementById("update-nav-btn");
+  if (existing) return; // 已有按钮，不重复添加
+
+  const header = document.querySelector("header");
+  if (!header) return;
+
+  const btn = document.createElement("button");
+  btn.id = "update-nav-btn";
+  btn.className = "update-nav-btn";
+  btn.title = "有新版本可用";
+  btn.textContent = "📥 更新";
+  btn.addEventListener("click", () => showUpdateDialog());
+  header.appendChild(btn);
+}
+
 // --- Init ---
 loadApiConfig();
 renderExportDir();
@@ -707,7 +725,7 @@ buildDateEl.textContent = __BUILD_DATE__;
 const versionTextEl = document.getElementById("version-text");
 if (versionTextEl) versionTextEl.textContent = __APP_VERSION__;
 // 启动自动更新检查（5 秒后静默检查）
-initAutoUpdate(__APP_VERSION__);
+initAutoUpdate(__APP_VERSION__, addUpdateButton);
 console.log("护照识别工具已启动");
 
 // --- License Check ---

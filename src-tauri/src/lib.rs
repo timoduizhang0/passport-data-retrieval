@@ -1,3 +1,4 @@
+mod download;
 mod excel;
 mod license;
 mod openai;
@@ -84,6 +85,7 @@ pub fn run() {
             recognize_passport_base64,
             export_excel_batch,
             get_license_info,
+            download::download_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
