@@ -202,37 +202,37 @@ if (-not (Test-Path $MsiRelPath)) {
 }
 Write-Ok "MSI 已生成: $MsiRelPath"
 
-# === 步骤 7-8：GitHub API 创建 tag 和 Release ===
-Write-Step "步骤 7/12：检查/创建 GitHub tag $TagName"
-$tagUrl = "$ApiBase/repos/$RepoOwner/$RepoName/git/refs/tags/$TagName"
-$tagCheck = Invoke-RestMethod -Uri $tagUrl -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } -ErrorAction SilentlyContinue
-if ($tagCheck -and $tagCheck.ref) {
-    Write-Ok "tag $TagName 已存在，跳过创建"
-    $existingTagRef = $tagCheck.object.sha
+# === 步骤 7：提交并推送到 GitHub ===
+Write-Step "步骤 7/12：提交 5 个文件并推送到 github main"
+git add $TouchedFiles
+$commitMsg = "chore: 发布 $TagName"
+git commit -m $commitMsg
+$commitSha = git rev-parse HEAD
+Write-Ok "commit: $commitSha"
+git push --force-with-lease github master:main
+if ($LASTEXITCODE -ne 0) {
+    Write-Err "git push github master:main 失败"
+}
+Write-Ok "推送成功"
+
+# === 步骤 8：创建 tag（用 git protocol，不依赖 GitHub API） ===
+Write-Step "步骤 8/12：创建并推送 tag $TagName"
+# 先检查远端是否已有此 tag
+$remoteTags = git ls-remote --tags github "refs/tags/$TagName" 2>&1
+if ($remoteTags) {
+    Write-Warn "远端 tag $TagName 已存在，跳过创建"
 } else {
-    # 拿 main 分支最新 commit 作为 tag 起点
-    $mainRef = Invoke-RestMethod -Uri "$ApiBase/repos/$RepoOwner/$RepoName/git/refs/heads/main" -Headers @{ Authorization = "token $env:GITHUB_TOKEN" }
-    $mainSha = $mainRef.object.sha
-    # 创建 annotated tag
-    $tagBody = @{
-        tag     = $TagName
-        message = "Release $TagName"
-        object  = $mainSha
-        type    = "commit"
-    } | ConvertTo-Json
-    try {
-        $newTag = Invoke-RestMethod -Uri "$ApiBase/repos/$RepoOwner/$RepoName/git/tags" -Method Post -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } -Body $tagBody -ContentType "application/json"
-        $tagSha = $newTag.sha
-        # 创建 ref
-        $refBody = @{ ref = "refs/tags/$TagName"; sha = $tagSha } | ConvertTo-Json
-        Invoke-RestMethod -Uri "$ApiBase/repos/$RepoOwner/$RepoName/git/refs" -Method Post -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } -Body $refBody -ContentType "application/json" | Out-Null
-        Write-Ok "tag $TagName 创建成功"
-    } catch {
-        Write-Err "创建 tag 失败: $_"
+    # 用本地当前 commit 创建轻量级 tag
+    git tag $TagName $commitSha
+    git push github $TagName
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "推送 tag $TagName 失败"
     }
+    Write-Ok "tag $TagName 已推送"
 }
 
-Write-Step "步骤 8/12：检查/创建 GitHub Release"
+# === 步骤 9：创建 GitHub Release（API，需要 token 有 Contents:Write） ===
+Write-Step "步骤 9/12：创建 GitHub Release"
 $releaseUrl = "$ApiBase/repos/$RepoOwner/$RepoName/releases/tags/$TagName"
 $existingRelease = Invoke-RestMethod -Uri $releaseUrl -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } -ErrorAction SilentlyContinue
 if ($existingRelease -and $existingRelease.id) {
@@ -252,48 +252,40 @@ if ($existingRelease -and $existingRelease.id) {
         $releaseId = $newRelease.id
         Write-Ok "Release 创建成功（id=$releaseId）"
     } catch {
-        Write-Err "创建 Release 失败: $_"
+        Write-Warn "创建 Release 失败（token 可能缺少 Contents:Write 权限），请手动创建:"
+        Write-Host "  https://github.com/$RepoOwner/$RepoName/releases/new?tag=$TagName" -ForegroundColor Yellow
+        $releaseId = $null
     }
 }
 
-Write-Step "步骤 9/12：上传 MSI 到 Release"
-# 检查是否已存在同名资产
-$assetsUrl = "$ApiBase/repos/$RepoOwner/$RepoName/releases/$releaseId/assets"
-$existingAssets = Invoke-RestMethod -Uri $assetsUrl -Headers @{ Authorization = "token $env:GITHUB_TOKEN" }
-$existingAsset = $existingAssets | Where-Object { $_.name -eq $MsiName }
-if ($existingAsset) {
-    # 删除旧资产后重新上传
-    Invoke-RestMethod -Uri "$ApiBase/repos/$RepoOwner/$RepoName/releases/assets/$($existingAsset.id)" -Method Delete -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } | Out-Null
-    Write-Warn "已删除同名旧资产，重新上传"
-}
-$uploadHeaders = @{
-    Authorization = "token $env:GITHUB_TOKEN"
-    "Content-Type" = "application/octet-stream"
-}
-try {
-    Invoke-RestMethod -Uri "$UploadsBase/repos/$RepoOwner/$RepoName/releases/$releaseId/assets?name=$MsiName" -Method Post -InFile $MsiRelPath -Headers $uploadHeaders | Out-Null
-    Write-Ok "MSI 上传成功"
-} catch {
-    Write-Err "上传 MSI 失败: $_"
+# === 步骤 10：上传 MSI 到 Release ===
+if ($releaseId) {
+    Write-Step "步骤 10/12：上传 MSI 到 Release"
+    $assetsUrl = "$ApiBase/repos/$RepoOwner/$RepoName/releases/$releaseId/assets"
+    $existingAssets = Invoke-RestMethod -Uri $assetsUrl -Headers @{ Authorization = "token $env:GITHUB_TOKEN" }
+    $existingAsset = $existingAssets | Where-Object { $_.name -eq $MsiName }
+    if ($existingAsset) {
+        Invoke-RestMethod -Uri "$ApiBase/repos/$RepoOwner/$RepoName/releases/assets/$($existingAsset.id)" -Method Delete -Headers @{ Authorization = "token $env:GITHUB_TOKEN" } | Out-Null
+        Write-Warn "已删除同名旧资产，重新上传"
+    }
+    $uploadHeaders = @{
+        Authorization = "token $env:GITHUB_TOKEN"
+        "Content-Type" = "application/octet-stream"
+    }
+    try {
+        Invoke-RestMethod -Uri "$UploadsBase/repos/$RepoOwner/$RepoName/releases/$releaseId/assets?name=$MsiName" -Method Post -InFile $MsiRelPath -Headers $uploadHeaders | Out-Null
+        Write-Ok "MSI 上传成功"
+    } catch {
+        Write-Warn "上传 MSI 失败: $_"
+        Write-Host "  手动上传: https://github.com/$RepoOwner/$RepoName/releases/tag/$TagName" -ForegroundColor Yellow
+        Write-Host "  本地文件: $MsiRelPath" -ForegroundColor Yellow
+    }
+} else {
+    Write-Warn "跳过 MSI 上传（Release 未创建）"
 }
 
-# === 步骤 10：提交并推送到 GitHub ===
-Write-Step "步骤 10/12：提交 5 个文件并推送到 github master:main"
-git add $TouchedFiles
-$commitMsg = "chore: 发布 $TagName"
-git commit -m $commitMsg
-$commitSha = git rev-parse HEAD
-Write-Ok "commit: $commitSha"
-# 远端 main 可能被人 force push 过，--force-with-lease 在安全的情况下允许覆盖
-# （仅在本地 master 没有别人新提交时才会 force，否则拒绝）
-git push --force-with-lease github master:main
-if ($LASTEXITCODE -ne 0) {
-    Write-Err "git push github master:main 失败"
-}
-Write-Ok "推送成功"
-
-# === 步骤 10.5：同步推送到 Gitee 源码主仓 ===
-Write-Step "步骤 10.5/12：同步推送到 Gitee 源码主仓"
+# === 步骤 11：同步推送到 Gitee 源码主仓 ===
+Write-Step "步骤 11/12：同步推送到 Gitee 源码主仓"
 git push origin master
 if ($LASTEXITCODE -ne 0) {
     Write-Warn "推送到 Gitee 失败，不影响发版（可手动重试：git push origin master）"
@@ -301,8 +293,8 @@ if ($LASTEXITCODE -ne 0) {
     Write-Ok "Gitee 同步成功"
 }
 
-# === 步骤 11：验证 jsDelivr 缓存 ===
-Write-Step "步骤 11/12：等待 jsDelivr CDN 同步"
+# === 步骤 12：验证 jsDelivr + 打印摘要 ===
+Write-Step "步骤 12/12：等待 jsDelivr CDN 同步并输出摘要"
 Write-Host "首次推送可能需 1-2 分钟 jsDelivr 才会同步..." -ForegroundColor Yellow
 $maxWait = 180
 $elapsed = 0
@@ -325,8 +317,7 @@ if (-not $cdReady) {
     Write-Warn "jsDelivr 在 ${maxWait}s 内未同步到 v$Version，请稍后手动验证"
 }
 
-# === 步骤 12：打印最终摘要 ===
-Write-Step "步骤 12/12：发版完成"
+# 打印最终摘要
 $summary = @{
     "Release URL"    = "https://github.com/$RepoOwner/$RepoName/releases/tag/$TagName"
     "MSI 直链"       = $DownloadUrl
