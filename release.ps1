@@ -163,12 +163,20 @@ Write-Host $versionJson -ForegroundColor DarkGray
 
 # === 步骤 4：同步 Cargo.lock ===
 Write-Step "步骤 4/12：同步 Cargo.lock"
-$updateOutput = cargo update -p passport-ocr 2>&1
-$updateExit = $LASTEXITCODE
+# Cargo.toml 在 src-tauri/ 下，cargo update 必须在子目录里跑
+Push-Location "src-tauri"
+try {
+    $updateOutput = cargo update -p passport-ocr 2>&1
+    $updateExit = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
 if ($updateExit -ne 0) {
     # 回滚时排除 Cargo.lock（可能未跟踪）
     $rollbackFiles = @($TouchedFiles | Where-Object { $_ -ne "src-tauri/Cargo.lock" })
     git checkout -- $rollbackFiles 2>$null
+    Write-Host "cargo update 错误输出:" -ForegroundColor Red
+    $updateOutput | ForEach-Object { Write-Host $_ -ForegroundColor Red }
     Write-Err "cargo update 失败（退出码 $updateExit），已回滚工作区"
 }
 Write-Ok "Cargo.lock 已同步"
