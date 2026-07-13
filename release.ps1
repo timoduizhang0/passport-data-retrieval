@@ -285,7 +285,9 @@ $commitMsg = "chore: 发布 $TagName"
 git commit -m $commitMsg
 $commitSha = git rev-parse HEAD
 Write-Ok "commit: $commitSha"
-git push $Remote master:main
+# 远端 main 可能被人 force push 过，--force-with-lease 在安全的情况下允许覆盖
+# （仅在本地 master 没有别人新提交时才会 force，否则拒绝）
+git push --force-with-lease github master:main
 if ($LASTEXITCODE -ne 0) {
     Write-Err "git push github master:main 失败"
 }
