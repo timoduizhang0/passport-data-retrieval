@@ -163,11 +163,13 @@ Write-Host $versionJson -ForegroundColor DarkGray
 
 # === 步骤 4：同步 Cargo.lock ===
 Write-Step "步骤 4/12：同步 Cargo.lock"
-cargo update -p passport-ocr 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    # 回滚
-    git checkout -- $TouchedFiles
-    Write-Err "cargo update 失败，已回滚工作区"
+$updateOutput = cargo update -p passport-ocr 2>&1
+$updateExit = $LASTEXITCODE
+if ($updateExit -ne 0) {
+    # 回滚时排除 Cargo.lock（可能未跟踪）
+    $rollbackFiles = @($TouchedFiles | Where-Object { $_ -ne "src-tauri/Cargo.lock" })
+    git checkout -- $rollbackFiles 2>$null
+    Write-Err "cargo update 失败（退出码 $updateExit），已回滚工作区"
 }
 Write-Ok "Cargo.lock 已同步"
 
@@ -176,8 +178,9 @@ Write-Step "步骤 5/12：执行 npm run tauri build（3-5 分钟）"
 $buildOutput = npm run tauri build 2>&1 | Tee-Object -Variable buildOut
 $buildExit = $LASTEXITCODE
 if ($buildExit -ne 0) {
-    # 回滚
-    git checkout -- $TouchedFiles
+    # 回滚时排除 Cargo.lock（可能未跟踪）
+    $rollbackFiles = @($TouchedFiles | Where-Object { $_ -ne "src-tauri/Cargo.lock" })
+    git checkout -- $rollbackFiles 2>$null
     Write-Warn "tauri build 失败，已回滚工作区"
     Write-Host "`n最后 20 行错误:" -ForegroundColor Red
     $buildOut | Select-Object -Last 20 | ForEach-Object { Write-Host $_ -ForegroundColor Red }
